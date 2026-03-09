@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <type_traits>
 
 using std::string;
 using std::stringstream;
@@ -33,26 +34,30 @@ struct type_offset_info<concrete> {
 };
 
 struct get_type_info_result {
-    enum result_types {
+    enum class  codes {
         success,
-        error
-    } type;
-    union {
-        string s;
-    };
+        generic_error,
+        no_fully_qualified_name,
+        size_mismatch
+    } code;
+    string result = "";
 };
 
 template <typename T>
-string get_type_offset_info(const string& tabstr = "    ") {
+get_type_info_result get_type_offset_info(const string& tabstr = "    ") {
     constexpr const type_offset_info<T> info_instance; // Must be template specialized
     using tinfo = typename ::type_offset_info<T>;
 
     if (tinfo::fully_qualified_name == nullptr) {
-        return string();
+        return {
+            get_type_info_result::codes::no_fully_qualified_name
+        };
     }
 
     if (countof(tinfo::field_names) != countof(tinfo::field_types) || countof(tinfo::field_types) != countof(tinfo::field_offsets)) {
-        return string();
+        return {
+            get_type_info_result::codes::size_mismatch
+        };
     }
 
     stringstream ss;
@@ -62,10 +67,18 @@ string get_type_offset_info(const string& tabstr = "    ") {
         ss << tabstr << tinfo::field_names[i] << ": type(" << tinfo::field_types[i] << ") @ offset " << tinfo::field_offsets[i] << "\n";
     }
 
-    return ss.str();
+    return {
+        get_type_info_result::codes::success,
+        ss.str()
+    };
 }
 
 int main() {
-    cout << get_type_offset_info<concrete>();
+    const get_type_info_result& result = get_type_offset_info<concrete>();
+    if (result.code != get_type_info_result::codes::success) {
+        return 1;
+    };
+
+    cout << result.result;
     return 0;
 }
