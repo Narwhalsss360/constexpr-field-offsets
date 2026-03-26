@@ -3,10 +3,48 @@
 #include <sstream>
 #include <iostream>
 #include <type_traits>
+#include <stdint.h>
+#include <string_view>
 
 using std::string;
 using std::stringstream;
 using std::cout;
+
+struct type_1 {
+    int a;
+};
+
+struct type_2 {
+    int a;
+    int b;
+};
+
+struct type_3 {
+    int a;
+    char b;
+    int c;
+};
+
+struct type_4 : type_3 {
+    uint16_t d;
+    uint16_t e;
+};
+
+template<typename T, auto MPtr>
+static constexpr const size_t offsetof_ptr()
+{
+    return ((::size_t) & reinterpret_cast<char const volatile&>((((T*)0)->*MPtr)));
+}
+
+#if 0  && (defined _MSC_VER && !defined _CRT_USE_BUILTIN_OFFSETOF)
+    #ifdef __cplusplus
+        #define offsetof(s,m) ((::size_t)&reinterpret_cast<char const volatile&>((((s*)0)->m)))
+    #else
+        #define offsetof(s,m) ((size_t)&(((s*)0)->m))
+    #endif
+#else
+    #define offsetof(s,m) __builtin_offsetof(s,m)
+#endif
 
 struct concrete {
     int field1;
@@ -80,5 +118,43 @@ int main() {
     };
 
     cout << result.result;
+
+    constexpr const char* const S = "AB" "C";
+
+    constexpr const std::string_view SV = S;
+
+    using t1_a_f = offsets::field_offset<&type_1::a>;
+    constexpr const size_t t1_a_f_o = offsetof(type_1, a);
+
+    using t2_a_f = offsets::field_offset<&type_2::a>;
+	constexpr const size_t t2_a_f_o = offsetof(type_2, a);
+    using t2_b_f = offsets::field_offset<&type_2::b>;
+
+    using t3_a_f = offsets::field_offset<&type_3::a>;
+	constexpr const size_t t3_a_f_o = offsetof(type_3, a);
+    using t3_b_f = offsets::field_offset<&type_3::b>;
+    constexpr const size_t t3_b_f_o = offsetof(type_3, b);
+    using t3_c_f = offsets::field_offset<&type_3::c>;
+	constexpr const size_t t3_c_f_o = offsetof(type_3, c);
+
+    type_4 o4;
+    uint8_t* const o4p = reinterpret_cast<uint8_t*>(&o4);
+
+    using t4_a_f = offsets::field_offset<&type_4::a>;
+    uint8_t* const t4_a_p = o4p + t4_a_f::offset;
+	constexpr const size_t t4_a_f_o = offsetof(type_4, a);
+
+    using t4_b_f = offsets::field_offset<&type_4::b>;
+	uint8_t* const t4_b_p = o4p + t4_b_f::offset;
+	constexpr const size_t t4_b_f_o = offsetof(type_4, b);
+
+    using t4_c_f = offsets::field_offset<&type_4::c>;
+	uint8_t* const t4_c_p = o4p + t4_c_f::offset;
+	constexpr const size_t t4_c_f_o = offsetof(type_4, c);
+
+    using t4_d_f = offsets::field_offset<&type_4::d>;
+	uint8_t* const t4_d_p = o4p + t4_d_f::offset;
+	constexpr const size_t t4_d_f_o = offsetof(type_4, d);
+
     return 0;
 }
